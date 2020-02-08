@@ -6,7 +6,10 @@ includeBuild("kaeron") {
     }
 }
 
-include(":server")
+include(":common")
+include(":server-aeron")
+include(":server-web")
+include(":client")
 
 val kotlin_version: String by settings
 

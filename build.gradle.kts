@@ -1,4 +1,6 @@
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformJvmPlugin
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.noarg.gradle.NoArgGradleSubplugin
 
 plugins {
     kotlin("jvm")
@@ -12,45 +14,43 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    implementation(kotlin("stdlib-jdk8"))
-    implementation(coroutine("jdk8"))
+subprojects {
+    apply<KotlinPlatformJvmPlugin>()
+    apply<NoArgGradleSubplugin>()
 
-    implementation("be.bluexin:kaeron")
+    dependencies {
+        implementation(kotlin("stdlib-jdk8"))
+        implementation(coroutine("jdk8"))
 
-    implementation("it.unimi.dsi", "fastutil", version("fastutil"))
+        // Testing
+        testImplementation("org.junit.jupiter", "junit-jupiter-api", version("junit"))
+        testImplementation("org.junit.jupiter", "junit-jupiter-params", version("junit"))
+        testRuntimeOnly("org.junit.jupiter", "junit-jupiter-engine", version("junit"))
+    }
 
-    implementation("net.onedaybeard.artemis", "artemis-odb", version("artemis"))
-    implementation("net.onedaybeard.artemis", "artemis-odb-serializer-kryo", version("artemis"))
-    implementation("net.onedaybeard.artemis", "artemis-odb-serializer-json", version("artemis"))
+    tasks.withType<KotlinCompile> {
+        kotlinOptions {
+            jvmTarget = "1.8"
+            @Suppress("SuspiciousCollectionReassignment")
+            freeCompilerArgs += listOf("-Xuse-experimental=kotlin.Experimental", "-XXLanguage:+InlineClasses")
+        }
+    }
 
-    implementation("com.github.javafaker", "javafaker", version("javafaker"))
-    implementation("com.fasterxml.jackson.module", "jackson-module-kotlin", version("jackson"))
+    tasks.test {
+        useJUnitPlatform()
+    }
 
-    // Logging
-    implementation("org.slf4j", "slf4j-api", version("slf4j"))
-    implementation("io.github.microutils", "kotlin-logging", version("klog"))
-    runtimeOnly("ch.qos.logback", "logback-classic", version("logback"))
+    tasks.withType<AbstractArchiveTask> {
+        archiveBaseName.convention(provider { project.name.toLowerCase() })
+    }
+
+    noArg {
+        annotation("be.bluexin.vishnu.Noarg")
+    }
 }
 
 tasks.wrapper {
     distributionType = Wrapper.DistributionType.ALL
-}
-
-tasks.withType<KotlinCompile> {
-    kotlinOptions {
-        jvmTarget = "1.8"
-        @Suppress("SuspiciousCollectionReassignment")
-        freeCompilerArgs += listOf("-Xuse-experimental=kotlin.Experimental", "-XXLanguage:+InlineClasses")
-    }
-}
-
-tasks.withType<AbstractArchiveTask> {
-    archiveBaseName.convention(provider { project.name.toLowerCase() })
-}
-
-noArg {
-    annotation("be.bluexin.brahma.Noarg")
 }
 
 fun Project.version(name: String) = extra.properties["${name}_version"] as? String
