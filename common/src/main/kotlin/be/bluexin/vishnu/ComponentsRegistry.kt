@@ -19,23 +19,22 @@
 
 package be.bluexin.vishnu
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap
+import it.unimi.dsi.fastutil.ints.Int2ObjectFunction
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
-import it.unimi.dsi.fastutil.objects.Object2IntMap
+import it.unimi.dsi.fastutil.objects.Object2IntFunction
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap
 
-@Suppress("ReplacePutWithAssignment")
 object ComponentsRegistry { // TODO: get registry from master node
     private var currentId = 0
-    private val registry : Object2IntMap<Class<out SerializedComponent>> = Object2IntOpenHashMap()
-    private val reverseRegistry : Int2ObjectMap<Class<out SerializedComponent>> = Int2ObjectOpenHashMap()
+    private val registry: Object2IntFunction<Class<out SerializedComponent>> = Object2IntOpenHashMap()
+    private val reverseRegistry: Int2ObjectFunction<Class<out SerializedComponent>> = Int2ObjectOpenHashMap()
 
     operator fun plusAssign(component: Class<out SerializedComponent>) {
         this[component]
     }
 
     operator fun get(component: Class<out SerializedComponent>): Int =
-        if (component in this.registry) this.registry.getInt(component) else {
+        if (this.registry.containsKey(component)) this.registry.getInt(component) else {
             this.registry.put(component, currentId)
             this.reverseRegistry.put(currentId, component)
             currentId++
