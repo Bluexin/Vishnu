@@ -62,7 +62,10 @@ class NetworkReadSystem(
                 UpdateType.DELETE -> {
                     val masterId = dis.readInt()
                     val id = entityMap.get(masterId)
-                    if (id != UNKNOWN_ENTITY_ID) world.delete(id)
+                    if (id != UNKNOWN_ENTITY_ID) {
+                        world.delete(id)
+                        entityMap.remove(masterId)
+                    }
                 }
             }
             Unit

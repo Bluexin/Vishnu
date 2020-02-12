@@ -22,14 +22,15 @@ package be.bluexin.vishnu
 import com.artemis.World
 import com.artemis.WorldConfigurationBuilder
 import kotlinx.coroutines.channels.Channel
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.io.ByteArrayOutputStream
 import java.io.DataInput
 import java.io.DataOutput
 import java.io.DataOutputStream
+
+private const val ENTITY_MASTER_ID = 42
 
 internal class NetworkReadSystemTest {
     @Noarg
@@ -46,11 +47,21 @@ internal class NetworkReadSystemTest {
     private fun SerializedComponent.toBytes() = ByteArrayOutputStream().use { bos ->
         DataOutputStream(bos).use { dos ->
             dos.writeByte(0)
-            dos.writeInt(1)
+            dos.writeInt(ENTITY_MASTER_ID)
             dos.writeInt(ComponentsRegistry[this::class.java])
             this.serializeTo(dos)
         }
         bos.toByteArray()
+    }
+
+    private val deleteAsBytes by lazy {
+        ByteArrayOutputStream().use { bos ->
+            DataOutputStream(bos).use { dos ->
+                dos.writeByte(1)
+                dos.writeInt(ENTITY_MASTER_ID)
+            }
+            bos.toByteArray()
+        }
     }
 
     @BeforeEach
@@ -59,12 +70,15 @@ internal class NetworkReadSystemTest {
     }
 
     @Test
-    fun `reading known components leads to entities being added to the World`() {
+    fun `reading known components leads to entities being added to the World and recorded in the entity ID map`() {
         ComponentsRegistry += StringComponent::class.java
         val channel = Channel<ByteArray>(1)
-        val world = World(WorldConfigurationBuilder()
-            .with(NetworkReadSystem(channel))
-            .build())
+        val nrs = NetworkReadSystem(channel)
+        val world = World(
+            WorldConfigurationBuilder()
+                .with(nrs)
+                .build()
+        )
 
         val component = StringComponent("Hello, World !")
 
@@ -76,14 +90,18 @@ internal class NetworkReadSystemTest {
         val result = messageMapper[0]
 
         assertEquals(component, result)
+        assertEquals(nrs.entityMap[ENTITY_MASTER_ID], 0)
     }
 
     @Test
-    fun `reading unknown components leads to no entities being added to the World`() {
+    fun `reading unknown components leads to no entities being added to the World and nothing to be inserted to the entity ID map`() {
         val channel = Channel<ByteArray>(1)
-        val world = World(WorldConfigurationBuilder()
-            .with(NetworkReadSystem(channel))
-            .build())
+        val nrs = NetworkReadSystem(channel)
+        val world = World(
+            WorldConfigurationBuilder()
+                .with(nrs)
+                .build()
+        )
 
         val component = StringComponent("Hello, World !")
 
@@ -96,5 +114,26 @@ internal class NetworkReadSystemTest {
         val result = messageMapper[0]
 
         assertNull(result)
+        assertFalse(nrs.entityMap.containsKey(ENTITY_MASTER_ID))
+    }
+
+    @Test
+    fun `reading entity delete causes it to be deleted from the World and removed from the entity ID map`() {
+        val channel = Channel<ByteArray>(1)
+        val nrs = NetworkReadSystem(channel)
+        val world = World(
+            WorldConfigurationBuilder()
+                .with(nrs)
+                .build()
+        )
+
+        val id = world.create()
+        nrs.entityMap.put(ENTITY_MASTER_ID, id)
+        channel.offer(deleteAsBytes)
+
+        world.process()
+
+        assertFalse(world.entityManager.isActive(id))
+        assertFalse(nrs.entityMap.containsKey(ENTITY_MASTER_ID))
     }
 }
