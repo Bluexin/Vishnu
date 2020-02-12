@@ -31,8 +31,7 @@ object ComponentsRegistry { // TODO: get registry from master node
     private val reverseRegistry : Int2ObjectMap<Class<out SerializedComponent>> = Int2ObjectOpenHashMap()
 
     operator fun plusAssign(component: Class<out SerializedComponent>) {
-        this.registry.put(component, currentId)
-        this.reverseRegistry.put(currentId++, component)
+        this[component]
     }
 
     operator fun get(component: Class<out SerializedComponent>): Int =
@@ -43,4 +42,9 @@ object ComponentsRegistry { // TODO: get registry from master node
         }
 
     operator fun get(id: Int): Class<out SerializedComponent>? = this.reverseRegistry.get(id)
+
+    internal fun reset() {
+        registry.clear()
+        reverseRegistry.clear()
+    }
 }

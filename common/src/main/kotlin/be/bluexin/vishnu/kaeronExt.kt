@@ -26,7 +26,7 @@ import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
 
-data class Update(
+data class Update private constructor(
     val type: Type,
     val id: Int,
     val component: SerializedComponent?
@@ -35,20 +35,10 @@ data class Update(
         COMPONENT,
         DELETE
     }
-}
 
-fun ReceiveChannel<ByteArray>.mapAsUpdates(): ReceiveChannel<Update> = this.map {
-    ByteArrayInputStream(it).use { bis ->
-        DataInputStream(bis).use { dis ->
-            val t = Update.Type.values()[dis.readByte().toInt()]
-            Update(
-                t,
-                dis.readInt(),
-                if (t == Update.Type.COMPONENT) {
-                    ComponentsRegistry[dis.readInt()]?.newInstance()?.read(dis)
-                } else null
-            )
-        }
+    companion object {
+        fun component(id: Int, component: SerializedComponent) = Update(Type.COMPONENT, id, component)
+        fun delete(id: Int) = Update(Type.DELETE, id, null)
     }
 }
 
