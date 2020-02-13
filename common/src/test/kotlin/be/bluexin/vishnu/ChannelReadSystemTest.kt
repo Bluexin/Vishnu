@@ -89,17 +89,19 @@ internal class ChannelReadSystemTest {
 
     @Test
     fun `reading component delete causes it to be deleted from the Entity but without removing the Entity`() {
+        registerComponent()
         val (channel, entityMap, world) = setup()
         val messageMapper = world.getMapper<StringComponent>()
 
         val id = world.create()
+        messageMapper.create(id).message = strings()
         entityMap[ENTITY_MASTER_ID] = id
         channel.offer(getDeleteAsBytes(COMPONENT_ID))
 
         world.process()
 
         assertTrue(world.entityManager.isActive(id))
-        assertNull(messageMapper[0])
+        assertNull(messageMapper[id])
     }
 
     @Test

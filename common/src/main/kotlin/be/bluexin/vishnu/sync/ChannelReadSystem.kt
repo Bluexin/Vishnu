@@ -30,8 +30,6 @@ import kotlinx.coroutines.channels.ReceiveChannel
 import java.io.ByteArrayInputStream
 import java.io.DataInputStream
 
-private const val UNKNOWN_ENTITY_ID = -1
-
 /**
  * System to read updates from a given [inbound] [ReceiveChannel] and update the [World]
  */
@@ -45,6 +43,9 @@ class ChannelReadSystem(
     private lateinit var componentsRegistry: ComponentsRegistry
 
     @UseExperimental(ExperimentalCoroutinesApi::class)
+    override fun checkProcessing() = !inbound.isEmpty && !inbound.isClosedForReceive
+
+    @UseExperimental(ExperimentalCoroutinesApi::class)
     override fun processSystem() {
         check(!inbound.isClosedForReceive) { "Inbound channel was closed (${inbound.cancel()})" }
         var i = inbound.poll()
@@ -54,6 +55,9 @@ class ChannelReadSystem(
         }
     }
 
+    /**
+     * Process updates according to the protocol
+     */
     private fun ByteArray.processUpdate() = ByteArrayInputStream(this).use { bis ->
         DataInputStream(bis).use { dis ->
             when (UpdateType.read(dis)) {
@@ -61,7 +65,7 @@ class ChannelReadSystem(
                     val masterId = dis.readInt()
                     val componentClass = componentsRegistry[dis.readInt()] ?: return // = not interested
                     var id = entityMap[masterId]
-                    if (id == UNKNOWN_ENTITY_ID) {
+                    if (id == EntityMap.UNKNOWN_ENTITY_ID) {
                         id = world.create()
                         entityMap[masterId] = id
                     }
@@ -70,7 +74,7 @@ class ChannelReadSystem(
                 UpdateType.DELETE -> {
                     val masterId = dis.readInt()
                     val id = entityMap[masterId]
-                    if (id != UNKNOWN_ENTITY_ID) {
+                    if (id != EntityMap.UNKNOWN_ENTITY_ID) {
                         val componentId = dis.readInt()
                         if (componentId == UpdateType.NO_COMPONENT) {
                             // Entity delete
