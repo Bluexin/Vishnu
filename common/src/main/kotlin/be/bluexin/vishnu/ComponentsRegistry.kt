@@ -19,30 +19,80 @@
 
 package be.bluexin.vishnu
 
+import com.artemis.annotations.Wire
 import it.unimi.dsi.fastutil.ints.Int2ObjectFunction
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.objects.Object2IntFunction
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap
 
-object ComponentsRegistry { // TODO: get registry from master node
+/**
+ * Class to [Wire] to get [SerializedComponent] mapping to their numerical ID for (de)serialization purposes.
+ */
+open class ComponentsRegistry { // TODO: get registry from master node
     private var currentId = 0
-    private val registry: Object2IntFunction<Class<out SerializedComponent>> = Object2IntOpenHashMap()
-    private val reverseRegistry: Int2ObjectFunction<Class<out SerializedComponent>> = Int2ObjectOpenHashMap()
+    protected val registry: Object2IntFunction<Class<out SerializedComponent>> = Object2IntOpenHashMap()
+    protected val reverseRegistry: Int2ObjectFunction<Class<out SerializedComponent>> = Int2ObjectOpenHashMap()
 
-    operator fun plusAssign(component: Class<out SerializedComponent>) {
+    /**
+     * Register [component], automatically assigning an ID
+     */
+    fun register(component: Class<out SerializedComponent>) {
         this[component]
     }
 
+    /**
+     * Generic alias for [register]
+     */
+    inline fun <reified T: SerializedComponent> register() = this.register(T::class.java)
+
+    /**
+     * Operator alias for [register]
+     */
+    operator fun plusAssign(component: Class<out SerializedComponent>) = this.register(component)
+
+    /**
+     * Get the stored ID for the given [component], first registering it if missing
+     */
     operator fun get(component: Class<out SerializedComponent>): Int =
-        if (this.registry.containsKey(component)) this.registry.getInt(component) else {
+        if (component in this) this.registry.getInt(component) else {
             this.registry.put(component, currentId)
             this.reverseRegistry.put(currentId, component)
             currentId++
         }
 
+    /**
+     * Get the component registered with [id], or null if it is unknown
+     */
     operator fun get(id: Int): Class<out SerializedComponent>? = this.reverseRegistry.get(id)
 
-    internal fun reset() {
+    /**
+     * Returns true if a component is registered with [id]
+     */
+    operator fun contains(id: Int): Boolean = reverseRegistry.containsKey(id)
+
+    /**
+     * Returns true if the [component] is registered
+     */
+    operator fun contains(component: Class<out SerializedComponent>): Boolean = registry.containsKey(component)
+}
+
+/**
+ * Class to instantiate to get a test-oriented [ComponentsRegistry].
+ * Register it with `ComponentsRegistry::class.java.canonicalName` as name so it gets [Wire]d in place of the original.
+ */
+class TestComponentsRegistry : ComponentsRegistry() {
+    /**
+     * Force the [component] to be registered as [id] (as opposed to assigning an automatic ID)
+     */
+    operator fun set(component: Class<out SerializedComponent>, id: Int) {
+        this.registry.put(component, id)
+        this.reverseRegistry.put(id, component)
+    }
+
+    /**
+     * Clear the registry
+     */
+    fun reset() {
         registry.clear()
         reverseRegistry.clear()
     }

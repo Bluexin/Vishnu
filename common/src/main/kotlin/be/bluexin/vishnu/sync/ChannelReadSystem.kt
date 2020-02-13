@@ -17,11 +17,14 @@
  * along with Vishnu.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package be.bluexin.vishnu
+package be.bluexin.vishnu.sync
 
+import be.bluexin.vishnu.ComponentsRegistry
+import be.bluexin.vishnu.EntityMap
+import be.bluexin.vishnu.read
 import com.artemis.BaseSystem
-import it.unimi.dsi.fastutil.ints.Int2IntFunction
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap
+import com.artemis.World
+import com.artemis.annotations.Wire
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.ReceiveChannel
 import java.io.ByteArrayInputStream
@@ -29,12 +32,17 @@ import java.io.DataInputStream
 
 private const val UNKNOWN_ENTITY_ID = -1
 
-class NetworkReadSystem(
+/**
+ * System to read updates from a given [inbound] [ReceiveChannel] and update the [World]
+ */
+class ChannelReadSystem(
     private val inbound: ReceiveChannel<ByteArray>
 ) : BaseSystem() {
-    val entityMap: Int2IntFunction = Int2IntOpenHashMap().apply {
-        defaultReturnValue(UNKNOWN_ENTITY_ID)
-    }
+    @Wire
+    private lateinit var entityMap: EntityMap
+
+    @Wire
+    private lateinit var componentsRegistry: ComponentsRegistry
 
     @UseExperimental(ExperimentalCoroutinesApi::class)
     override fun processSystem() {
@@ -48,32 +56,35 @@ class NetworkReadSystem(
 
     private fun ByteArray.processUpdate() = ByteArrayInputStream(this).use { bis ->
         DataInputStream(bis).use { dis ->
-            when (UpdateType.values()[dis.readByte().toInt()]) {
+            when (UpdateType.read(dis)) {
                 UpdateType.COMPONENT -> {
                     val masterId = dis.readInt()
-                    val componentClass = ComponentsRegistry[dis.readInt()] ?: return // = not interested
-                    var id = entityMap.get(masterId)
+                    val componentClass = componentsRegistry[dis.readInt()] ?: return // = not interested
+                    var id = entityMap[masterId]
                     if (id == UNKNOWN_ENTITY_ID) {
                         id = world.create()
-                        entityMap.put(masterId, id)
+                        entityMap[masterId] = id
                     }
                     world.edit(id).create(componentClass).read(dis)
                 }
                 UpdateType.DELETE -> {
                     val masterId = dis.readInt()
-                    val id = entityMap.get(masterId)
+                    val id = entityMap[masterId]
                     if (id != UNKNOWN_ENTITY_ID) {
-                        world.delete(id)
-                        entityMap.remove(masterId)
+                        val componentId = dis.readInt()
+                        if (componentId == UpdateType.NO_COMPONENT) {
+                            // Entity delete
+                            world.delete(id)
+                            entityMap -= masterId
+                        } else if (componentId in componentsRegistry) {
+                            // Component delete
+                            world.edit(id).remove(componentsRegistry[componentId])
+                            entityMap -= masterId
+                        }
                     }
                 }
             }
             Unit
         }
-    }
-
-    enum class UpdateType {
-        COMPONENT,
-        DELETE
     }
 }
