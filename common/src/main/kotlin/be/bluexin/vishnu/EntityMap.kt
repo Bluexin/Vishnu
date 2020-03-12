@@ -32,25 +32,45 @@ class EntityMap {
     /**
      * Returns true if this map knows about [masterId], and false otherwise
      */
-    operator fun contains(masterId: Int): Boolean = entityMap.containsKey(masterId)
+    operator fun contains(masterId: Int): Boolean = masterToLocal.containsKey(masterId)
+
+    /**
+     * Returns true if this map knows about [localId], and false otherwise
+     */
+    fun containsLocal(localId: Int): Boolean = localToMaster.containsKey(localId)
 
     /**
      * Get the local ID for [masterId], or [UNKNOWN_ENTITY_ID] if [masterId] is not known
      */
-    operator fun get(masterId: Int): Int = entityMap[masterId]
+    operator fun get(masterId: Int): Int = masterToLocal[masterId]
+
+    /**
+     * Get the master ID for [localId], or [UNKNOWN_ENTITY_ID] if [localId] is not known
+     */
+    fun getMaster(localId: Int): Int = localToMaster[localId]
 
     /**
      * Stores the [localId] matching [masterId]
      */
     fun put(masterId: Int, localId: Int) {
-        entityMap.put(masterId, localId)
+        masterToLocal.put(masterId, localId)
+        localToMaster.put(localId, masterId)
     }
 
     /**
      * Removes the [masterId] from this map
      */
-    fun remove(masterId: Int) {
-        entityMap.remove(masterId)
+    fun removeMaster(masterId: Int) {
+        val localId = masterToLocal.remove(masterId)
+        if (localId != UNKNOWN_ENTITY_ID) localToMaster.remove(localId)
+    }
+
+    /**
+     * Removes the [localId] from this map
+     */
+    fun removeLocal(localId: Int) {
+        val masterId = localToMaster.remove(localId)
+        if (masterId != UNKNOWN_ENTITY_ID) masterToLocal.remove(masterId)
     }
 
     /**
@@ -59,12 +79,37 @@ class EntityMap {
     operator fun set(masterId: Int, localId: Int) = this.put(masterId, localId)
 
     /**
-     * Operator alias for [remove]
+     * Operator alias for [removeMaster]
      */
-    operator fun minusAssign(masterId: Int) = this.remove(masterId)
+    operator fun minusAssign(masterId: Int) = this.removeMaster(masterId)
 
-    private val entityMap: Int2IntFunction = Int2IntOpenHashMap().apply {
+    private val masterToLocal: Int2IntFunction = Int2IntOpenHashMap().apply {
         defaultReturnValue(UNKNOWN_ENTITY_ID)
+    }
+
+    private val localToMaster: Int2IntFunction = Int2IntOpenHashMap().apply {
+        defaultReturnValue(UNKNOWN_ENTITY_ID)
+    }
+
+    /**
+     * Wrapper with operators based on local IDs.
+     */
+    inner class Reverse {
+
+        /**
+         * Operator alias for [getMaster]
+         */
+        operator fun get(localId: Int) = this@EntityMap.getMaster(localId)
+
+        /**
+         * Operator alias for [containsLocal]
+         */
+        operator fun contains(localId: Int) = this@EntityMap.containsLocal(localId)
+
+        /**
+         * Operator alias for [removeLocal]
+         */
+        operator fun minusAssign(localId: Int) = this@EntityMap.removeLocal(localId)
     }
 
     companion object {

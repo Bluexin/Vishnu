@@ -17,25 +17,20 @@
  * along with Vishnu.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package be.bluexin.vishnu
+package be.bluexin.vishnu.sync
 
-import com.artemis.Component
-import com.artemis.annotations.Transient
+import be.bluexin.vishnu.Noarg
+import be.bluexin.vishnu.SerializedComponent
+import com.artemis.annotations.PooledWeaver
 import java.io.DataInput
 import java.io.DataOutput
 
-// TODO: delta updates
-@Transient
-abstract class SerializedComponent : Component() {
-    fun clean() {
-        dirty = false
-    }
-    var dirty = true
-    abstract fun serializeTo(outputStream: DataOutput)
-    abstract fun deserializeFrom(inputStream: DataInput)
-}
+@PooledWeaver
+@Noarg
+data class TestComponent(var message: String) : SerializedComponent() {
+    override fun serializeTo(outputStream: DataOutput) = outputStream.writeUTF(message)
 
-fun <T: SerializedComponent> T.read(buffer: DataInput): T {
-    this.deserializeFrom(buffer)
-    return this
+    override fun deserializeFrom(inputStream: DataInput) {
+        message = inputStream.readUTF()
+    }
 }

@@ -23,6 +23,7 @@ import com.artemis.annotations.Wire
 import it.unimi.dsi.fastutil.ints.Int2ObjectFunction
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.objects.Object2IntFunction
+import it.unimi.dsi.fastutil.objects.Object2IntMap
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap
 
 /**
@@ -74,6 +75,11 @@ open class ComponentsRegistry { // TODO: get registry from master node
      * Returns true if the [component] is registered
      */
     operator fun contains(component: Class<out SerializedComponent>): Boolean = registry.containsKey(component)
+
+    /**
+     * Returns a [Set] containing all known [SerializedComponent]s
+     */
+    val components: Set<Class<out SerializedComponent>> get() = (registry as Object2IntMap<Class<out SerializedComponent>>).keys
 }
 
 /**
