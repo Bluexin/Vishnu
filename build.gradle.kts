@@ -31,9 +31,14 @@ subprojects {
         mavenCentral()
     }
 
+    java {
+        withSourcesJar()
+    }
+
     dependencies {
         implementation(kotlin("stdlib-jdk8"))
         implementation(coroutine("jdk8"))
+        api("org.jetbrains:annotations:13.0")
 
         // Testing
         testImplementation("org.junit.jupiter", "junit-jupiter-api", version("junit"))
@@ -64,7 +69,7 @@ subprojects {
     publishing {
         publications.create<MavenPublication>("publication") {
             from(components["java"])
-            this.artifactId = "${rootProject.name}-${base.archivesBaseName}"
+            this.artifactId = "${rootProject.name}-${base.archivesBaseName}".toLowerCase()
         }
 
         repositories {

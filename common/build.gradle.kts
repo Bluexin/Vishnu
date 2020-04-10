@@ -1,9 +1,9 @@
 dependencies {
-    implementation("be.bluexin:kaeron")
+    implementation("be.bluexin:kaeron:1.0-SNAPSHOT")
 
     implementation("it.unimi.dsi", "fastutil", version("fastutil"))
 
-    implementation("net.onedaybeard.artemis", "artemis-odb", version("artemis"))
+    api("net.onedaybeard.artemis", "artemis-odb", version("artemis"))
     implementation("net.onedaybeard.artemis", "artemis-odb-serializer-kryo", version("artemis"))
     implementation("net.onedaybeard.artemis", "artemis-odb-serializer-json", version("artemis"))
 
