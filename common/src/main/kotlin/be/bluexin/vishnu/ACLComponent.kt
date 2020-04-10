@@ -28,7 +28,14 @@ import java.io.DataOutput
 
 @Noarg
 @PooledWeaver
-data class ACLComponent(var currentAcl: Int2IntMap = Int2IntMaps.EMPTY_MAP) : SerializedComponent() {
+data class ACLComponent(private var currentAcl: Int2IntMap = Int2IntMaps.EMPTY_MAP) : SerializedComponent() {
+
+    operator fun get(component: Int) = currentAcl[component]
+
+    operator fun set(component: Int, acl: Int) {
+        currentAcl[component] = acl
+        dirty()
+    }
 
     override fun serializeTo(outputStream: DataOutput) {
         outputStream.writeInt(currentAcl.size)

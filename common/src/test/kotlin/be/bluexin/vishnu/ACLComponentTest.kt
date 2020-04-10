@@ -22,7 +22,7 @@ package be.bluexin.vishnu
 import it.unimi.dsi.fastutil.ints.Int2IntMap
 import it.unimi.dsi.fastutil.ints.Int2IntMaps
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap
-import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import java.io.ByteArrayInputStream
@@ -44,10 +44,14 @@ internal class ACLComponentTest {
             it.flush()
             it.toByteArray()
         }
+        assertTrue(original.dirty)
         val read = ByteArrayInputStream(bytes).use {
             DataInputStream(it).use { dis -> ACLComponent().read(dis) }
         }
-        assertEquals(m, read.currentAcl)
+        m.int2IntEntrySet().forEach { (k, v) ->
+            assertEquals(v, read[k])
+        }
+        assertFalse(read.dirty)
     }
 
     @Suppress("unused")
