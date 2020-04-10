@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jetbrains.kotlin.noarg.gradle.NoArgGradleSubplugin
 
 plugins {
+    `maven-publish`
     kotlin("jvm")
     kotlin("plugin.noarg")
 }
@@ -10,13 +11,25 @@ plugins {
 group = "be.bluexin"
 version = "1.0-SNAPSHOT"
 
+java {
+    withSourcesJar()
+}
+
 repositories {
     mavenCentral()
 }
 
 subprojects {
+    apply<MavenPublishPlugin>()
     apply<KotlinPlatformJvmPlugin>()
     apply<NoArgGradleSubplugin>()
+
+    group = rootProject.group
+    version = rootProject.version
+
+    repositories {
+        mavenCentral()
+    }
 
     dependencies {
         implementation(kotlin("stdlib-jdk8"))
@@ -46,6 +59,27 @@ subprojects {
 
     noArg {
         annotation("be.bluexin.vishnu.Noarg")
+    }
+
+    publishing {
+        publications.create<MavenPublication>("publication") {
+            from(components["java"])
+            this.artifactId = "${rootProject.name}-${base.archivesBaseName}"
+        }
+
+        repositories {
+            val mavenPassword = if (hasProp("local")) null else prop("sbxMavenPassword")
+            maven {
+                url = uri(if (mavenPassword != null) "sftp://maven.sandboxpowered.org:22/sbxmvn/" else "file://$buildDir/repo")
+                if (mavenPassword != null) {
+                    credentials(PasswordCredentials::class.java) {
+                        username = prop("sbxMavenUser")
+                        password = mavenPassword
+                    }
+                }
+            }
+
+        }
     }
 }
 
